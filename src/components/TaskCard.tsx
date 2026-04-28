@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Flame, Check, Edit2, Trash2, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Task } from '@/types'
@@ -11,13 +11,17 @@ interface TaskCardProps {
   onEdit: () => void
 }
 
-export function TaskCard({ task, isCompleted, continuousDays, onEdit }: TaskCardProps) {
+export function TaskCard({ task, continuousDays, onEdit }: TaskCardProps) {
   const { deleteTask } = useTaskStore()
   const { isParentMode } = useModeStore()
   const { user, setStars, canAddStarsToday } = useStarStore()
+  const [isChecked, setIsChecked] = useState(false)
   const [showAddEffect, setShowAddEffect] = useState(false)
+  const [showRemoveEffect, setShowRemoveEffect] = useState(false)
   const [showLimitWarning, setShowLimitWarning] = useState(false)
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; type: 'star' | 'sparkle' }[]>([])
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null)
+  const longPressTriggered = useRef(false)
 
   const canAdd = canAddStarsToday(task.stars)
 
@@ -27,10 +31,10 @@ export function TaskCard({ task, isCompleted, continuousDays, onEdit }: TaskCard
     }
   }
 
-  const createParticles = () => {
+  const createParticles = (type: 'add' | 'remove') => {
     const newParticles: { id: number; x: number; y: number; type: 'star' | 'sparkle' }[] = []
     for (let i = 0; i < 8; i++) {
-      const particleType: 'star' | 'sparkle' = Math.random() > 0.5 ? 'star' : 'sparkle'
+      const particleType: 'star' | 'sparkle' = type === 'add' ? (Math.random() > 0.5 ? 'star' : 'sparkle') : 'sparkle'
       newParticles.push({
         id: Date.now() + i,
         x: 30 + Math.random() * 40,
@@ -43,6 +47,8 @@ export function TaskCard({ task, isCompleted, continuousDays, onEdit }: TaskCard
   }
 
   const handleAddStars = () => {
+    if (isChecked) return
+    
     if (!canAdd) {
       setShowLimitWarning(true)
       setTimeout(() => setShowLimitWarning(false), 2000)
@@ -61,15 +67,75 @@ export function TaskCard({ task, isCompleted, continuousDays, onEdit }: TaskCard
     const newTotalStars = user.totalStarsEarned + totalStarsToAdd
     
     setShowAddEffect(true)
-    createParticles()
+    createParticles('add')
     setTimeout(() => setShowAddEffect(false), 500)
     
     setStars(newStars, newTotalStars)
+    setIsChecked(true)
     
     if (bonusStars > 0) {
       setTimeout(() => {
         alert(`🎉 恭喜！连续完成${continuousDays + 1}天，获得额外${bonusStars}分奖励！`)
       }, 600)
+    }
+  }
+
+  const handleRemoveStars = () => {
+    if (!isChecked) return
+    
+    const starsToRemove = task.stars
+    const newStars = Math.max(0, user.currentStars - starsToRemove)
+    const newTotalStars = Math.max(0, user.totalStarsEarned - starsToRemove)
+    
+    setShowRemoveEffect(true)
+    createParticles('remove')
+    setTimeout(() => setShowRemoveEffect(false), 500)
+    
+    setStars(newStars, newTotalStars)
+    setIsChecked(false)
+  }
+
+  const handleMouseDown = () => {
+    longPressTriggered.current = false
+    longPressTimer.current = setTimeout(() => {
+      if (isChecked) {
+        longPressTriggered.current = true
+        handleRemoveStars()
+      }
+    }, 500)
+  }
+
+  const handleMouseUp = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+    }
+    if (!longPressTriggered.current) {
+      handleAddStars()
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+    }
+  }
+
+  const handleTouchStart = () => {
+    longPressTriggered.current = false
+    longPressTimer.current = setTimeout(() => {
+      if (isChecked) {
+        longPressTriggered.current = true
+        handleRemoveStars()
+      }
+    }, 500)
+  }
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+    }
+    if (!longPressTriggered.current) {
+      handleAddStars()
     }
   }
 
@@ -80,7 +146,7 @@ export function TaskCard({ task, isCompleted, continuousDays, onEdit }: TaskCard
     <div
       className={cn(
         'card p-4 flex items-center justify-between transition-all duration-300 relative overflow-hidden',
-        isCompleted ? 'bg-green-50/60 border-2 border-green-200' : 'bg-white/80',
+        isChecked ? 'bg-green-50/60 border-2 border-green-200' : 'bg-white/80',
         'hover:shadow-xl card-hover'
       )}
     >
@@ -114,6 +180,25 @@ export function TaskCard({ task, isCompleted, continuousDays, onEdit }: TaskCard
               }}
             >
               +{task.stars}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showRemoveEffect && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute text-red-400 font-bold text-xl animate-pulse"
+              style={{
+                left: `${25 + Math.random() * 50}%`,
+                top: `${15 + Math.random() * 50}%`,
+                animationDelay: `${i * 80}ms`,
+                animationDuration: '0.6s',
+              }}
+            >
+              -{task.stars}
             </div>
           ))}
         </div>
@@ -169,13 +254,20 @@ export function TaskCard({ task, isCompleted, continuousDays, onEdit }: TaskCard
 
       <div className="flex items-center gap-1 flex-shrink-0 ml-2">
         <button
-          onClick={handleAddStars}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
           className={cn(
-            'w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300',
-            canAdd 
-              ? 'bg-gradient-to-br from-green-400 to-green-500 text-white hover:from-green-500 hover:to-green-600 hover:scale-110 active:scale-95 shadow-md' 
-              : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+            'w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 select-none',
+            isChecked 
+              ? 'bg-gradient-to-br from-green-400 to-green-500 text-white shadow-md' 
+              : canAdd 
+                ? 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:scale-110 active:scale-95' 
+                : 'bg-gray-50 text-gray-300 cursor-not-allowed'
           )}
+          title={isChecked ? '长按取消' : '点击完成'}
         >
           <Check className="w-5 h-5" />
         </button>

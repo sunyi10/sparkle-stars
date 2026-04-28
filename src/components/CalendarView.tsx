@@ -78,7 +78,7 @@ export function CalendarView({ selectedDate, onDateChange }: CalendarViewProps) 
             <button
               key={item.date}
               onClick={() => onDateChange(item.date)}
-              className={`flex-shrink-0 w-14 h-16 rounded-xl flex flex-col items-center justify-center text-sm font-medium transition-all ${
+              className={`flex-shrink-0 w-14 h-20 rounded-xl flex flex-col items-center justify-center text-sm font-medium transition-all ${
                 isSelected
                   ? 'bg-gradient-to-br from-pink-400 to-purple-400 text-white ring-2 ring-pink-500 scale-105'
                   : item.isToday
@@ -93,7 +93,7 @@ export function CalendarView({ selectedDate, onDateChange }: CalendarViewProps) 
               <span className="text-xs opacity-75">{item.month}月</span>
               <span className="text-lg font-bold">{item.day}</span>
               {hasStars && (
-                <span className="flex items-center gap-0.5 text-xs mt-0.5">
+                <span className="flex items-center gap-0.5 text-xs mt-1">
                   <Star className={`w-3 h-3 ${isSelected ? 'fill-white text-white' : 'fill-yellow-400 text-yellow-400'}`} />
                   {item.stars}
                 </span>
