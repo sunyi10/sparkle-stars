@@ -31,6 +31,7 @@ export interface TaskCompletion {
   completedAt: string
   starsEarned: number
   continuousDay?: number
+  bonusStars?: number
 }
 
 export type GiftRedeemType = 'stars' | 'crowns'

@@ -6,6 +6,7 @@ import { PenaltyCard } from '@/components/PenaltyCard'
 import { PenaltyForm } from '@/components/PenaltyForm'
 import { useTaskStore, usePenaltyStore } from '@/store'
 import type { Task, TaskType, Penalty } from '@/types'
+import { getTodayString } from '@/lib/utils'
 
 type TabType = TaskType | 'penalty'
 
@@ -114,6 +115,8 @@ export function TasksPage() {
               task={task}
               isCompleted={completedToday.includes(task.id)}
               continuousDays={getContinuousDays(task.id)}
+              date={getTodayString()}
+              isToday={true}
               onEdit={() => {
                 setEditingTask(task)
                 setShowTaskForm(true)

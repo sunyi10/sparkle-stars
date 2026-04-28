@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Star, Crown, Lock } from 'lucide-react'
+import { Star, Crown } from 'lucide-react'
 import { CalendarView } from '@/components/CalendarView'
 import { TaskCard } from '@/components/TaskCard'
 import { useStarStore, useTaskStore } from '@/store'
@@ -7,20 +7,18 @@ import { getTodayString } from '@/lib/utils'
 
 export function HomePage() {
   const [selectedDate, setSelectedDate] = useState(getTodayString())
-  const { user, getStarsByDate } = useStarStore()
-  const { tasks, getTodayCompletedTasks, getContinuousDays } = useTaskStore()
+  const { user } = useStarStore()
+  const { tasks, getCompletedTasksByDate, getContinuousDays } = useTaskStore()
 
   const todayString = getTodayString()
-  const isPastDate = selectedDate < todayString
-
-  const dateStars = getStarsByDate(selectedDate)
+  
+  const completedTaskIds = getCompletedTasksByDate(selectedDate)
   
   const selectedDateCompleted = tasks
-    .filter(t => t.type === 'daily')
     .map(t => {
-      const completed = getTodayCompletedTasks().includes(t.id)
+      const completed = completedTaskIds.includes(t.id)
       const continuousDays = getContinuousDays(t.id)
-      return { task: t, isCompleted: completed, continuousDays }
+      return { task: t, isCompleted: completed, continuousDays, selectedDate }
     })
 
   const formatDateDisplay = (dateStr: string) => {
@@ -85,82 +83,34 @@ export function HomePage() {
 
       <CalendarView selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
-      {isPastDate ? (
-        <div className="card">
-          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Star className="w-5 h-5 text-yellow-500" />
-            {formatDateDisplay(selectedDate)} 的积分情况
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <Star className="w-5 h-5 text-yellow-500 fill-yellow-400" />
+            {selectedDate === todayString ? '今天攒星星' : `${formatDateDisplay(selectedDate)} 的星星任务`}
           </h2>
-          
-          {dateStars > 0 ? (
-            <div className="text-center py-8">
-              <div className="text-6xl mb-4">🎉</div>
-              <p className="text-4xl font-bold text-pink-500 mb-2">{dateStars}</p>
-              <p className="text-gray-500">当天获得的星星数量</p>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <div className="text-6xl mb-4">😴</div>
-              <p className="text-gray-500">当天没有获得星星</p>
-            </div>
-          )}
+          <span className="text-sm text-gray-500">
+            已完成 {selectedDateCompleted.filter(c => c.isCompleted).length} 个任务
+          </span>
         </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <Star className="w-5 h-5 text-yellow-500 fill-yellow-400" />
-              {selectedDate === todayString ? '今天攒星星' : `${formatDateDisplay(selectedDate)} 的星星任务`}
-            </h2>
-            {selectedDate === todayString && (
-              <span className="text-sm text-gray-500">
-                已完成 {selectedDateCompleted.filter(c => c.isCompleted).length} 个任务
-              </span>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            {selectedDate === todayString ? (
-              selectedDateCompleted.map(({ task, isCompleted, continuousDays }) => {
-                const isContinuous = task.isContinuous && continuousDays > 0
-                return (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    isCompleted={isCompleted}
-                    continuousDays={isContinuous ? continuousDays : 0}
-                    onEdit={() => {}}
-                  />
-                )
-              })
-            ) : (
-              tasks.filter(t => t.type === 'daily').map(task => (
-                <div
-                  key={task.id}
-                  className="card p-4 flex items-center justify-between bg-white/80"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                      <Lock className="w-5 h-5 text-gray-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-700">{task.name}</h3>
-                      <p className="text-sm text-gray-400">
-                        完成可获得 <span className="text-yellow-500">{task.stars}</span> 颗星星
-                        {task.isContinuous && `，连续${task.continuousDays}天额外+10分`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 text-gold-100 font-bold">
-                    <Star className="w-5 h-5 fill-gold-100" />
-                    {task.stars}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+        
+        <div className="space-y-2">
+          {selectedDateCompleted.map(({ task, isCompleted, continuousDays, selectedDate: taskDate }) => {
+            const isContinuous = task.isContinuous && continuousDays > 0
+            return (
+              <TaskCard
+                key={task.id}
+                task={task}
+                isCompleted={isCompleted}
+                continuousDays={isContinuous ? continuousDays : 0}
+                date={taskDate}
+                isToday={taskDate === todayString}
+                onEdit={() => {}}
+              />
+            )
+          })}
         </div>
-      )}
+      </div>
 
       {user.crowns >= 1 && (
         <div className="bg-gradient-to-r from-purple-200 to-pink-200 rounded-xl p-4 text-center">

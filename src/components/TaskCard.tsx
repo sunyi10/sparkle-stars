@@ -8,14 +8,15 @@ interface TaskCardProps {
   task: Task
   isCompleted: boolean
   continuousDays: number
+  date: string
+  isToday: boolean
   onEdit: () => void
 }
 
-export function TaskCard({ task, continuousDays, onEdit }: TaskCardProps) {
-  const { deleteTask } = useTaskStore()
+export function TaskCard({ task, isCompleted, continuousDays, date, isToday, onEdit }: TaskCardProps) {
+  const { deleteTask, completeTask, undoCompleteTask, getContinuousDays } = useTaskStore()
   const { isParentMode } = useModeStore()
-  const { user, setStars, canAddStarsToday } = useStarStore()
-  const [isChecked, setIsChecked] = useState(false)
+  const { canAddStarsToday } = useStarStore()
   const [showAddEffect, setShowAddEffect] = useState(false)
   const [showRemoveEffect, setShowRemoveEffect] = useState(false)
   const [showLimitWarning, setShowLimitWarning] = useState(false)
@@ -46,8 +47,10 @@ export function TaskCard({ task, continuousDays, onEdit }: TaskCardProps) {
     setTimeout(() => setParticles([]), 1000)
   }
 
-  const handleAddStars = () => {
-    if (isChecked) return
+  const handleCompleteTask = () => {
+    if (isCompleted) return
+    
+    if (!isToday) return
     
     if (!canAdd) {
       setShowLimitWarning(true)
@@ -55,52 +58,38 @@ export function TaskCard({ task, continuousDays, onEdit }: TaskCardProps) {
       return
     }
     
-    let bonusStars = 0
-    if (task.isContinuous && continuousDays > 0) {
-      if ((continuousDays + 1) % task.continuousDays === 0) {
-        bonusStars = 10
-      }
-    }
-    
-    const totalStarsToAdd = task.stars + bonusStars
-    const newStars = user.currentStars + totalStarsToAdd
-    const newTotalStars = user.totalStarsEarned + totalStarsToAdd
-    
     setShowAddEffect(true)
     createParticles('add')
     setTimeout(() => setShowAddEffect(false), 500)
     
-    setStars(newStars, newTotalStars)
-    setIsChecked(true)
+    completeTask(task.id)
     
-    if (bonusStars > 0) {
+    const newContinuousDays = getContinuousDays(task.id)
+    if (task.isContinuous && newContinuousDays > 0 && newContinuousDays % task.continuousDays === 0) {
       setTimeout(() => {
-        alert(`🎉 恭喜！连续完成${continuousDays + 1}天，获得额外${bonusStars}分奖励！`)
+        alert(`🎉 恭喜！连续完成${newContinuousDays}天，获得额外10分奖励！`)
       }, 600)
     }
   }
 
-  const handleRemoveStars = () => {
-    if (!isChecked) return
+  const handleUndoTask = () => {
+    if (!isCompleted) return
     
-    const starsToRemove = task.stars
-    const newStars = Math.max(0, user.currentStars - starsToRemove)
-    const newTotalStars = Math.max(0, user.totalStarsEarned - starsToRemove)
+    if (!isToday) return
     
     setShowRemoveEffect(true)
     createParticles('remove')
     setTimeout(() => setShowRemoveEffect(false), 500)
     
-    setStars(newStars, newTotalStars)
-    setIsChecked(false)
+    undoCompleteTask(task.id, date)
   }
 
   const handleMouseDown = () => {
     longPressTriggered.current = false
     longPressTimer.current = setTimeout(() => {
-      if (isChecked) {
+      if (isCompleted && isToday) {
         longPressTriggered.current = true
-        handleRemoveStars()
+        handleUndoTask()
       }
     }, 500)
   }
@@ -110,7 +99,7 @@ export function TaskCard({ task, continuousDays, onEdit }: TaskCardProps) {
       clearTimeout(longPressTimer.current)
     }
     if (!longPressTriggered.current) {
-      handleAddStars()
+      handleCompleteTask()
     }
   }
 
@@ -123,9 +112,9 @@ export function TaskCard({ task, continuousDays, onEdit }: TaskCardProps) {
   const handleTouchStart = () => {
     longPressTriggered.current = false
     longPressTimer.current = setTimeout(() => {
-      if (isChecked) {
+      if (isCompleted && isToday) {
         longPressTriggered.current = true
-        handleRemoveStars()
+        handleUndoTask()
       }
     }, 500)
   }
@@ -135,7 +124,7 @@ export function TaskCard({ task, continuousDays, onEdit }: TaskCardProps) {
       clearTimeout(longPressTimer.current)
     }
     if (!longPressTriggered.current) {
-      handleAddStars()
+      handleCompleteTask()
     }
   }
 
@@ -146,7 +135,7 @@ export function TaskCard({ task, continuousDays, onEdit }: TaskCardProps) {
     <div
       className={cn(
         'card p-4 flex items-center justify-between transition-all duration-300 relative overflow-hidden',
-        isChecked ? 'bg-green-50/60 border-2 border-green-200' : 'bg-white/80',
+        isCompleted ? 'bg-green-50/60 border-2 border-green-200' : 'bg-white/80',
         'hover:shadow-xl card-hover'
       )}
     >
@@ -261,13 +250,16 @@ export function TaskCard({ task, continuousDays, onEdit }: TaskCardProps) {
           onTouchEnd={handleTouchEnd}
           className={cn(
             'w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 select-none',
-            isChecked 
+            isCompleted 
               ? 'bg-gradient-to-br from-green-400 to-green-500 text-white shadow-md' 
-              : canAdd 
-                ? 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:scale-110 active:scale-95' 
+              : isToday 
+                ? canAdd 
+                  ? 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:scale-110 active:scale-95' 
+                  : 'bg-gray-50 text-gray-300 cursor-not-allowed'
                 : 'bg-gray-50 text-gray-300 cursor-not-allowed'
           )}
-          title={isChecked ? '长按取消' : '点击完成'}
+          title={isCompleted ? (isToday ? '长按取消' : '') : (isToday ? '点击完成' : '')}
+          disabled={!isToday}
         >
           <Check className="w-5 h-5" />
         </button>

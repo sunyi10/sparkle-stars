@@ -57,6 +57,8 @@ interface AppStore {
   applyPenalty: (penaltyId: string) => boolean
   
   completeTask: (taskId: string) => void
+  undoCompleteTask: (taskId: string, date?: string) => void
+  getCompletedTasksByDate: (date: string) => string[]
   getTodayCompletedTasks: () => string[]
   getContinuousDays: (taskId: string) => number
   
@@ -214,21 +216,22 @@ export const useStore = create<AppStore>()(
           }
         }
 
+        let bonusStars = 0
+        if (task.isContinuous && continuousDay) {
+          if (continuousDay % task.continuousDays === 0) {
+            bonusStars = 10
+          }
+        }
+        const totalStars = task.stars + bonusStars
+
         const completion: TaskCompletion = {
           id: uuidv4(),
           taskId,
           completedAt: today,
           starsEarned: task.stars,
           continuousDay,
+          bonusStars,
         }
-
-        let bonusStars = 0
-        if (task.isContinuous && continuousDay) {
-          if (continuousDay % 7 === 0) {
-            bonusStars = 10
-          }
-        }
-        const totalStars = task.stars + bonusStars
 
         set((state) => ({
           taskCompletions: [...state.taskCompletions, completion],
@@ -243,6 +246,39 @@ export const useStore = create<AppStore>()(
         get().checkMedals()
       },
 
+      undoCompleteTask: (taskId, date) => {
+        const { tasks, taskCompletions } = get()
+        const task = tasks.find((t) => t.id === taskId)
+        if (!task) return
+
+        const targetDate = date || getTodayString()
+        const completion = taskCompletions.find(
+          (tc) => tc.taskId === taskId && tc.completedAt === targetDate
+        )
+        if (!completion) return
+
+        const totalStars = completion.starsEarned + (completion.bonusStars || 0)
+
+        set((state) => ({
+          taskCompletions: state.taskCompletions.filter((tc) => tc.id !== completion.id),
+          user: {
+            ...state.user,
+            currentStars: Math.max(0, state.user.currentStars - totalStars),
+            totalStarsEarned: Math.max(0, state.user.totalStarsEarned - totalStars),
+            consecutiveDays: Math.max(0, state.user.consecutiveDays - 1),
+          },
+        }))
+
+        get().checkMedals()
+      },
+
+      getCompletedTasksByDate: (date) => {
+        const { taskCompletions } = get()
+        return taskCompletions
+          .filter((tc) => tc.completedAt === date)
+          .map((tc) => tc.taskId)
+      },
+
       getTodayCompletedTasks: () => {
         const { taskCompletions } = get()
         const today = getTodayString()
@@ -255,15 +291,35 @@ export const useStore = create<AppStore>()(
         const { taskCompletions } = get()
         const completions = taskCompletions
           .filter((tc) => tc.taskId === taskId)
-          .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+          .map((tc) => tc.completedAt)
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
         
         if (completions.length === 0) return 0
         
         const today = getTodayString()
-        const lastCompletion = completions[0]
-        if (lastCompletion.completedAt !== today) return 0
+        if (completions[0] !== today) return 0
         
-        return lastCompletion.continuousDay || 0
+        let consecutiveDays = 1
+        let currentDate = new Date(today)
+        
+        for (let i = 1; i < completions.length; i++) {
+          const previousDate = new Date(completions[i])
+          const expectedDate = new Date(currentDate)
+          expectedDate.setDate(expectedDate.getDate() - 1)
+          
+          if (
+            previousDate.getFullYear() === expectedDate.getFullYear() &&
+            previousDate.getMonth() === expectedDate.getMonth() &&
+            previousDate.getDate() === expectedDate.getDate()
+          ) {
+            consecutiveDays++
+            currentDate = previousDate
+          } else {
+            break
+          }
+        }
+        
+        return consecutiveDays
       },
 
       addGift: (gift) => {
@@ -490,7 +546,9 @@ export const useTaskStore = () => useStore((state) => ({
   updateTask: state.updateTask,
   deleteTask: state.deleteTask,
   completeTask: state.completeTask,
+  undoCompleteTask: state.undoCompleteTask,
   getTodayCompletedTasks: state.getTodayCompletedTasks,
+  getCompletedTasksByDate: state.getCompletedTasksByDate,
   getContinuousDays: state.getContinuousDays,
 }))
 
