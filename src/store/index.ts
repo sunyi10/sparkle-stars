@@ -58,6 +58,7 @@ interface AppStore {
   
   completeTask: (taskId: string) => void
   undoCompleteTask: (taskId: string, date?: string) => void
+  resetTodayProgress: () => void
   getCompletedTasksByDate: (date: string) => string[]
   getTodayCompletedTasks: () => string[]
   getContinuousDays: (taskId: string) => number
@@ -266,6 +267,28 @@ export const useStore = create<AppStore>()(
             currentStars: Math.max(0, state.user.currentStars - totalStars),
             totalStarsEarned: Math.max(0, state.user.totalStarsEarned - totalStars),
             consecutiveDays: Math.max(0, state.user.consecutiveDays - 1),
+          },
+        }))
+
+        get().checkMedals()
+      },
+
+      resetTodayProgress: () => {
+        const today = getTodayString()
+        const { taskCompletions } = get()
+        
+        const todayCompletions = taskCompletions.filter((tc) => tc.completedAt === today)
+        const totalStarsEarnedToday = todayCompletions.reduce(
+          (sum, tc) => sum + tc.starsEarned + (tc.bonusStars || 0),
+          0
+        )
+
+        set((state) => ({
+          taskCompletions: state.taskCompletions.filter((tc) => tc.completedAt !== today),
+          user: {
+            ...state.user,
+            currentStars: Math.max(0, state.user.currentStars - totalStarsEarnedToday),
+            totalStarsEarned: Math.max(0, state.user.totalStarsEarned - totalStarsEarnedToday),
           },
         }))
 
@@ -547,6 +570,7 @@ export const useTaskStore = () => useStore((state) => ({
   deleteTask: state.deleteTask,
   completeTask: state.completeTask,
   undoCompleteTask: state.undoCompleteTask,
+  resetTodayProgress: state.resetTodayProgress,
   getTodayCompletedTasks: state.getTodayCompletedTasks,
   getCompletedTasksByDate: state.getCompletedTasksByDate,
   getContinuousDays: state.getContinuousDays,

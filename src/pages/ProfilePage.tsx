@@ -1,6 +1,6 @@
-import { Calendar, Settings, User, Lock, Unlock, RotateCcw, TrendingUp, Sparkles, Award, Target } from 'lucide-react'
+import { Calendar, Settings, User, Lock, Unlock, RotateCcw, TrendingUp, Sparkles, Award, Target, RefreshCw } from 'lucide-react'
 import { MedalBadge } from '@/components/MedalBadge'
-import { useStarStore, useMedalStore, useModeStore } from '@/store'
+import { useStarStore, useMedalStore, useModeStore, useTaskStore } from '@/store'
 import { useState } from 'react'
 
 interface ProfilePageProps {
@@ -11,6 +11,7 @@ export function ProfilePage({ onEnterParentMode }: ProfilePageProps) {
   const { user, getStarsToday, getStarsThisWeek, refundCrown, getStarsByDate } = useStarStore()
   const { medals } = useMedalStore()
   const { isParentMode, switchToChildMode } = useModeStore()
+  const { resetTodayProgress } = useTaskStore()
   const [refundAmount, setRefundAmount] = useState(1)
 
   const avgDailyStars = user.totalStarsEarned > 0 && user.consecutiveDays > 0
@@ -211,7 +212,7 @@ export function ProfilePage({ onEnterParentMode }: ProfilePageProps) {
         <div className="space-y-4">
           <button
             onClick={handleModeSwitch}
-            className="w-full flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
+            className="w-full flex items-center justify-between py-3 border-b border-gray-100"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
@@ -227,6 +228,25 @@ export function ProfilePage({ onEnterParentMode }: ProfilePageProps) {
               {!isParentMode ? '已开启' : '点击进入'}
             </span>
           </button>
+          
+          {isParentMode && (
+            <button
+              onClick={() => {
+                if (confirm('确定要重置今天的任务进度和积分吗？所有今天获得的星星将被扣除。')) {
+                  resetTodayProgress()
+                }
+              }}
+              className="w-full flex items-center justify-between py-3 border-b border-gray-100 last:border-0 text-red-500"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <RefreshCw className="w-5 h-5 text-red-400" />
+                </div>
+                <span className="text-gray-700">重置今天进度</span>
+              </div>
+              <span className="text-sm text-gray-400">积分归零</span>
+            </button>
+          )}
           
           <div className="text-center text-gray-400 text-sm py-4">
             星星大作战 v1.0
