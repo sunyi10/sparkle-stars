@@ -222,22 +222,22 @@ export function TaskCard({ task, isCompleted, continuousDays, onEdit }: TaskCard
         </div>
       </div>
 
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-0.5 flex-shrink-0">
         <button
           onClick={handleRemoveStars}
           disabled={user.currentStars <= 0}
           className={cn(
-            'w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300',
+            'w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300',
             user.currentStars > 0 
               ? 'bg-gradient-to-br from-red-100 to-red-200 text-red-500 hover:from-red-200 hover:to-red-300 hover:scale-110 active:scale-95 shadow-md' 
               : 'bg-gray-100 text-gray-300 cursor-not-allowed'
           )}
         >
-          <Minus className="w-3.5 h-3.5" />
+          <Minus className="w-3 h-3" />
         </button>
         
         <span className={cn(
-          'w-8 text-center font-bold text-base transition-all duration-300',
+          'w-6 text-center font-bold text-sm transition-all duration-300',
           showAddEffect ? 'text-green-500 scale-125' : 'text-yellow-600',
           showRemoveEffect ? 'text-red-500 scale-75' : ''
         )}>
@@ -247,28 +247,28 @@ export function TaskCard({ task, isCompleted, continuousDays, onEdit }: TaskCard
         <button
           onClick={handleAddStars}
           className={cn(
-            'w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300',
+            'w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300',
             canAdd 
               ? 'bg-gradient-to-br from-green-100 to-green-200 text-green-500 hover:from-green-200 hover:to-green-300 hover:scale-110 active:scale-95 shadow-md' 
               : 'bg-gray-100 text-gray-300 cursor-not-allowed'
           )}
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-3 h-3" />
         </button>
         
         {isParentMode && (
-          <div className="flex items-center gap-0.5 ml-1">
+          <div className="flex items-center gap-0.5 ml-0.5">
             <button
               onClick={onEdit}
-              className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-pink-400 transition-colors"
+              className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-pink-400 transition-colors"
             >
-              <Edit2 className="w-3.5 h-3.5" />
+              <Edit2 className="w-3 h-3" />
             </button>
             <button
               onClick={handleDelete}
-              className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
+              className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3 h-3" />
             </button>
           </div>
         )}
