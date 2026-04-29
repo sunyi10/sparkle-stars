@@ -559,6 +559,19 @@ export const useStore = create<AppStore>()(
     }),
     {
       name: 'star-adventure-storage-v3',
+      partialize: (state) => ({
+        user: state.user,
+        tasks: state.tasks,
+        penalties: state.penalties,
+        penaltyRecords: state.penaltyRecords,
+        taskCompletions: state.taskCompletions,
+        gifts: state.gifts,
+        redemptions: state.redemptions,
+        crownRecords: state.crownRecords,
+        medals: state.medals,
+        isParentMode: state.isParentMode,
+        maxDailyStars: state.maxDailyStars,
+      }),
     }
   )
 )
